@@ -1,0 +1,2 @@
+# requirejs-template-demo
+主要是为了解决有些项目需要支持ie8浏览器，并且前后端分离的项目，在处理数据的时，用原始的jquery拼写页面是十分痛苦的事。为了简化前端的工作，所以我结合requiresjs 与artTemplate模板编写一套适合ie8的Demo
