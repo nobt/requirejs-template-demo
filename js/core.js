@@ -4,20 +4,158 @@
 
 define(['template', 'jquery', 'layer', 'cryptojs'], function(template, $, layer) {
   var temparr = [];
+  //模板过滤器
+  var filter = template.defaults.imports;
+
+
+  /**
+  *  Base64 encode / decode
+  **/
+  var Base64 = {
+      _keyStr: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=", 
+      encode: function (input){
+          var output = "";
+          var chr1, chr2, chr3, enc1, enc2, enc3, enc4;
+          var i = 0;
+
+          input = Base64._utf8_encode(input);
+
+          while (i < input.length)
+          {
+              chr1 = input.charCodeAt(i++);
+              chr2 = input.charCodeAt(i++);
+              chr3 = input.charCodeAt(i++);
+
+              enc1 = chr1 >> 2;
+              enc2 = ((chr1 & 3) << 4) | (chr2 >> 4);
+              enc3 = ((chr2 & 15) << 2) | (chr3 >> 6);
+              enc4 = chr3 & 63;
+
+              if (isNaN(chr2))
+              {
+                  enc3 = enc4 = 64;
+              }
+              else if (isNaN(chr3))
+              {
+                  enc4 = 64;
+              }
+
+              output = output +
+                  this._keyStr.charAt(enc1) + this._keyStr.charAt(enc2) +
+                  this._keyStr.charAt(enc3) + this._keyStr.charAt(enc4);
+          } // Whend 
+
+          return output;
+      },
+      decode: function (input)
+      {
+          var output = "";
+          var chr1, chr2, chr3;
+          var enc1, enc2, enc3, enc4;
+          var i = 0;
+          input = input.replace(/[^A-Za-z0-9\+\/\=]/g, "");
+          while (i < input.length)
+          {
+              enc1 = this._keyStr.indexOf(input.charAt(i++));
+              enc2 = this._keyStr.indexOf(input.charAt(i++));
+              enc3 = this._keyStr.indexOf(input.charAt(i++));
+              enc4 = this._keyStr.indexOf(input.charAt(i++));
+
+              chr1 = (enc1 << 2) | (enc2 >> 4);
+              chr2 = ((enc2 & 15) << 4) | (enc3 >> 2);
+              chr3 = ((enc3 & 3) << 6) | enc4;
+
+              output = output + String.fromCharCode(chr1);
+
+              if (enc3 != 64)
+              {
+                  output = output + String.fromCharCode(chr2);
+              }
+              if (enc4 != 64)
+              {
+                  output = output + String.fromCharCode(chr3);
+              }
+
+          }
+          output = Base64._utf8_decode(output);
+          return output;
+      },
+      _utf8_encode: function (string){
+          var utftext = "";
+          string = string.replace(/\r\n/g, "\n");
+
+          for (var n = 0; n < string.length; n++)
+          {
+              var c = string.charCodeAt(n);
+
+              if (c < 128)
+              {
+                  utftext += String.fromCharCode(c);
+              }
+              else if ((c > 127) && (c < 2048))
+              {
+                  utftext += String.fromCharCode((c >> 6) | 192);
+                  utftext += String.fromCharCode((c & 63) | 128);
+              }
+              else
+              {
+                  utftext += String.fromCharCode((c >> 12) | 224);
+                  utftext += String.fromCharCode(((c >> 6) & 63) | 128);
+                  utftext += String.fromCharCode((c & 63) | 128);
+              }
+
+          } // Next n 
+
+          return utftext;
+      },
+      _utf8_decode: function (utftext){
+          var string = "";
+          var i = 0;
+          var c, c1, c2, c3;
+          c = c1 = c2 = 0;
+
+          while (i < utftext.length)
+          {
+              c = utftext.charCodeAt(i);
+              if (c < 128)
+              {
+                  string += String.fromCharCode(c);
+                  i++;
+              }
+              else if ((c > 191) && (c < 224))
+              {
+                  c2 = utftext.charCodeAt(i + 1);
+                  string += String.fromCharCode(((c & 31) << 6) | (c2 & 63));
+                  i += 2;
+              }
+              else
+              {
+                  c2 = utftext.charCodeAt(i + 1);
+                  c3 = utftext.charCodeAt(i + 2);
+                  string += String.fromCharCode(((c & 15) << 12) | ((c2 & 63) << 6) | (c3 & 63));
+                  i += 3;
+              }
+
+          }
+          return string;
+      }
+  }
   /*
    * 模板的渲染
    */
-
   function templateView(options, callBack) {
     /* options 参数说明
      * options.elementId: 将模板的内容渲染到页面指定的id处
      * options.templateId: 模板的id名字
      * options.data: 模板页面的数据
      * options.isDraw: 默认是直接渲染，如果想拿到模板字符串，可设置 isDraw = 1
+     * options.isStore: 默认是模板不保留，如果想保持模板字符串，可设置 isStore = 1
      * 注意：只支持本页面模板化
      */
     var html = template(options.templateId, options.data);
     var isDraw = options.isDraw ? options.isDraw : false;
+    var isStore = options.isStore ? options.isStore : false;
+    if(!isStore) $('#'+options.templateId).remove();
     if (isDraw) {
       return html;
     } else {
@@ -33,32 +171,44 @@ define(['template', 'jquery', 'layer', 'cryptojs'], function(template, $, layer)
       }
     }
   }
-  /*
+  /**
    * 按文件与目录组织模板,在没有预编译的情况下可以使用如下请求获取模板页面
    * templateId: 模板地址， /tpl/xxx.html 或 tpl/xxx.tpl
-   * 单模板异步加载，不支持多模板
-   * options.isStore: 默认是渲染周后，当前页面不保存模板内容isStore = 0，如果想在当前页面保存模板后续持续可用，可设置 isStore = 1
+   * saveTemplate: true 或 flase 模板是否保存
+   * 单模板异步加载，支持多模板加载，多模板只能放在该模板之后
    */
 
   function templateLoader(options, callBack) {
-    var toUrl = (options.templateId).split('/');
-    toUrl.push(Math.ceil(Math.random() * 10000));
-    var templateIdToStr = toUrl.join('-');
+    var lt = (options.templateId).split('.')[0].split('/');
+    var templateIdToStr = lt.join('-');
     if ($('#' + templateIdToStr).length) {
+      options.templateId = templateIdToStr;
       templateView(options, callBack);
       return false;
     } else {
       $.get(options.templateId, function(result, status) {
         if (status == "success") {
-          var html;
-          if (options.isStore) {
-            $('<script id="' + templateIdToStr + '" type="text/html">' + result + '</script>').appendTo('body');
-            html = template(templateIdToStr, options.data);
-          } else {
+          var len = result.indexOf('<script');
+          if (len == -1) {
             var render = template.compile(result);
-            html = render(options.data);
+            var html = render(options.data);
+            document.getElementById(options.elementId).innerHTML = html;
+          } else {
+            //$('<script id="' + templateIdToStr + '" type="text/html">' + result + '</script>').appendTo('body');
+            // var html = template(templateIdToStr, options.data);
+            // document.getElementById(options.elementId).innerHTML = html;
+            var str = result.substring(0, len);
+            var render = template.compile(str);
+            var html = render(options.data);
+            var saveTemplate = options.saveTemplate || false;
+            if(saveTemplate){
+              $('<script id="' + templateIdToStr + '" type="text/html">' + str + '</script>').appendTo('body');
+            }
+            document.getElementById(options.elementId).innerHTML = html;
+            //子模版
+            var tpl = result.substring(len);
+            $(tpl).appendTo('body');
           }
-          document.getElementById(options.elementId).innerHTML = html;
           if (callBack) {
             try {
               if (typeof(eval(callBack)) == "function") {
@@ -107,32 +257,28 @@ define(['template', 'jquery', 'layer', 'cryptojs'], function(template, $, layer)
    * cookie
    */
   var _cookie = {
-    _setCookie: function(name, value) {
+    setCookie: function(name, value) {
       var t = new Date();
       t.setTime(t.getTime() + 1 * 1 * 3600 * 1000);
       document.cookie = escape(name) + "=" + escape(value) + ";path=/;expires=" + t.toGMTString();
     },
-    setCookie: function(name, value) {
-      var c = String.fromCharCode(value.charCodeAt(0) + value.length);
-      for (var i = 1; i < value.length; i++) {
-        c += String.fromCharCode(value.charCodeAt(i) + value.charCodeAt(i - 1));
-      }
-      this._setCookie(name, escape(c));
-    },
-    _getCookie: function(name) {
+    getCookie: function(name) {
       if (new RegExp("\\b" + name + "=([^;]+)", "g").test(document.cookie)) return unescape(RegExp.$1 || '');
       return '';
     },
-    getCookie: function(name) {
-      var code = unescape(this._getCookie(name));
-      var c = String.fromCharCode(code.charCodeAt(0) - code.length);
-      for (var i = 1; i < code.length; i++) {
-        c += String.fromCharCode(code.charCodeAt(i) - c.charCodeAt(i - 1));
+    set: function(name, value){
+      if(typeof value == 'number'){
+        value = value.toString();
+      }else if(typeof value == 'object'){
+        value = JSON.stringify(value);
       }
-      return c;
+      this.setCookie(name, Base64.encode(value));
     },
-    clearUserCookie: function() {
-
+    get: function(name){
+      return Base64.decode(this.getCookie(name));
+    },
+    del: function(name) {
+      this.set(name, '', -1);
     }
   };
 
@@ -303,7 +449,7 @@ define(['template', 'jquery', 'layer', 'cryptojs'], function(template, $, layer)
   /*
    * 时间戳转换
    */
-  template.defaults.imports.dateFormat = function(date, format) {
+  filter.dateFormat = function(date, format) {
     date = new Date(date);
     if (date == 'Invalid Date') {
       return '';
@@ -334,10 +480,10 @@ define(['template', 'jquery', 'layer', 'cryptojs'], function(template, $, layer)
   };
 
 
-  /* 
+  /** 
    * 时间戳显示为多少分钟前，多少天前的处理
    */
-  template.defaults.imports.dateDiff = function(date) {
+  filter.dateDiff = function(date) {
     var timestamp = new Date(date).getTime();
     // 补全为13位
     var arrTimestamp = (timestamp + '').split('');
@@ -400,7 +546,7 @@ define(['template', 'jquery', 'layer', 'cryptojs'], function(template, $, layer)
   /*
    * 字符串截取
    */
-  template.defaults.imports.substring = function(data, start, length) {
+  filter.substring = function(data, start, length) {
     length = length || 20;
     start = start || 0;
     if (data.length > length) {
@@ -447,27 +593,21 @@ define(['template', 'jquery', 'layer', 'cryptojs'], function(template, $, layer)
     //创建函数对象，并调用
     new func();
   }
-  /*
-   * 检查是否登陆
-   */
-
-  function checkIsLogin(functionName) {
-    if (!_cookie.getCookie('UC_PCLOGIN')) {
-      location.href = "login.html"
-    }
-  }
   /* 
    * 获取url的参数
    */
 
-  function GetQueryString(name) {
+  function getQueryString(name) {
     var url = decodeURI(location.search);
     var theRequest = {};  
     if (url.indexOf("?") != -1) {  
       var str = url.substr(1);  
       strs = str.split("&");  
       for(var i = 0; i < strs.length; i ++) {  
-         theRequest[strs[i].split("=")[0]]=unescape(strs[i].split("=")[1]);  
+        var num = strs[i].indexOf("="); 
+        if(num > 0){ 
+           theRequest[strs[i].substring(0,num)] = unescape(strs[i].substr(num+1));
+        }  
       }  
     }  
     return theRequest[name]; 
@@ -475,7 +615,7 @@ define(['template', 'jquery', 'layer', 'cryptojs'], function(template, $, layer)
   /*
    * 截取字符串
    */
-  template.defaults.imports.getSubString = function(strqwe, len, hasDot) {
+  filter.getSubString = function(strqwe, len, hasDot) {
     hasDot = hasDot || 1;
     var newLength = 0;
     var newStr = "";
@@ -502,13 +642,6 @@ define(['template', 'jquery', 'layer', 'cryptojs'], function(template, $, layer)
     newStr = newStr.replace(/\s+/g, "");
     return newStr;
   }
-  /* 
-   * 截取时间 去除分秒
-   */
-  template.defaults.imports.getSubTime = function(time) {
-    var time = time.substring(0, 10);
-    return time;
-  };
   /*
   * 自定义console.log 
   */
@@ -521,7 +654,7 @@ define(['template', 'jquery', 'layer', 'cryptojs'], function(template, $, layer)
   return {
     Http: Http,
     layer: layer,
-    GetQueryString: GetQueryString,
+    getQueryString: getQueryString,
     webUploaderFiles: webUploaderFiles,
     cookie: _cookie,
     templateView: templateView,
@@ -531,6 +664,7 @@ define(['template', 'jquery', 'layer', 'cryptojs'], function(template, $, layer)
     callFuncByName: callFuncByName,
     template: template,
     loadingTpl: loadingTpl,
-    log: _log
+    log: _log,
+    filter: filter
   }
 })
