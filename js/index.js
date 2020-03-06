@@ -1,28 +1,20 @@
-/*
-* 给模块配置别名
-*/
-require.config(config.operate.alias);
-/*
-* 加载文件
-*/
-require(config.operate.model, function($, utils) {
+/**
+ * author: lilin
+ * time: 2019/9/2
+ * description: 首页js
+ */
+define(['jquery', 'utils'], function($, utils) {
 
-    	var layer = utils.layer;
-    	var Http = utils.Http;
+	var layer = utils.layer;
+	var Http = utils.Http;
 
-     	/*开始编写js 代码*/
-		var options = {
-			elementId: 'demo-con',
-			templateId: 'demo-con-tpl',
-			data: {message: '你好！这是一个demo！'}
-		};
-		utils.templateView(options);
-
-		var options1 = {
-			elementId: 'demo-con-1',
-			templateId: 'tpl/test-content-template.tpl',
-			data: {title: '你加载了模板test-content-template.tpl'}
-		};
-		utils.templateLoader(options1);
-
+	var options1 = {
+		elementId: '#demo-con-1',
+		templateId: 'tpl/test-content-template.html',
+		data: {
+			title: '你加载了模板test-content-template.tpl',
+			msg: {a:1,b:2}
+		}
+	};
+	utils.templateLoaderRender(options1);
 });
