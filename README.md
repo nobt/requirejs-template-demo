@@ -7,17 +7,27 @@
 * 支持IE8浏览器时依赖es5-sham.min.js、es5-shim.min.js
 
 ### 目录结构
-> -- css
-> -- images
-> -- js
-> -- lib
-> -- tpl
-> -- index.html
+ > -- css
+ 
+ > -- images
+ 
+ > -- js
+ 
+ > -- lib
+ 
+ > -- tpl
+ 
+ > -- index.html
+
 ### js目录
 > config.js 一些基本的配置
+
 > core.js 核心方法
+
 > filter.js 过滤器方法
+
 > utils.js 公共的一些方法
+
 > index.js 入口文件
 ### lib目录
 > lib包含了一些插件，例如layer弹框、layerdata时间插件以及webUploader插件，ie8下需要加载使用es5-sham.min.js、es5-shim.min.js、json3.min.js，因为在ie8下template.js需要依赖它们
